@@ -1,36 +1,35 @@
-from machine import Pin, I2C
-from ssd1306 import SSD1306_I2C
-import utime as time
-from dht import DHT22
- 
-WIDTH  = 128                                            # oled display width
-HEIGHT = 32                                             # oled display height
- 
-i2c = I2C(0, scl=Pin(1), sda=Pin(0), freq=200000)       # Init I2C using pins GP8 & GP9 (default I2C0 pins)
- 
-oled = SSD1306_I2C(WIDTH, HEIGHT, i2c)                  # Init oled display
-sensor = DHT22(Pin(6))
+#https://github.com/endail/hx711-pico-mpy
+#https://www.youtube.com/watch?v=LIuf2egMioA&t=368s
+from machine import Pin
+from src.hx711 import *
 
-while True:
-    sensor.measure()
-    temp = sensor.temperature()
-    hum = sensor.humidity()
-    weight = ("150")
-    print("Temperature: {}°C   Humidity: {:.0f}% ".format(temp, hum))
-    # Clear the oled display in case it has junk on it.
-    oled.fill(0)       
-    
-    # Add some text
-    oled.text("Temp: ",0,0)
-    oled.text(str(temp),50,0)
-    oled.text("C",90,0)
-    
-    oled.text("Hum: ",0,10)
-    oled.text(str(hum),50,10)
-    oled.text("%",90,10)
-    
-    oled.text("LB: ",0,20)
-    oled.text(str(weight),50,20)
-    
-    time.sleep(1)
-    oled.show()
+# 1. initalise the hx711
+hx = hx711(Pin(4), Pin(5))
+
+# 2. power up
+hx.set_power(hx711_power.pwr_up)
+
+# 3. [OPTIONAL] set gain and save it to the hx711
+# chip by powering down then back up
+hx.set_gain(hx711_gain.gain_128)
+hx.set_power(hx711_power.pwr_down)
+hx711.wait_power_down()
+hx.set_power(hx711_power.pwr_up)
+
+# 4. wait for readings to settle
+hx711.wait_settle(hx711_rate.rate_10)
+
+# 5. read values
+
+# wait (block) until a value is read
+val = hx.get_value()
+
+# or use a timeout
+if val := hx.get_value_timeout(250000):
+    # value was obtained within the timeout period
+    # in this case, within 250 milliseconds
+    print(val)
+
+# or see if there's a value, but don't block if not
+if val := hx.get_value_noblock():
+    print(val)
