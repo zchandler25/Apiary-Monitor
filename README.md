@@ -7,3 +7,5 @@ As a beekeeper i wanted to enable the remote monitoring of my hives. Knowing the
 Pico W: I choose the pico W for its low cost, power consumpton and ability to send data through wifi.
 DHT22 temp and humidy sensors
 Load cell
+oled screen
+single button
