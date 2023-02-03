@@ -2,16 +2,25 @@ from machine import Pin, I2C
 from ssd1306 import SSD1306_I2C
 import utime as time
 from dht import DHT22
- 
+time.sleep(1.5)
+
+###################################################################################
+#Display
+i2c = I2C(0, scl=Pin(1), sda=Pin(0), freq=200000)       # Init I2C using pins GP8 & GP9 (default I2C0 pins) 
+oled = SSD1306_I2C(WIDTH, HEIGHT, i2c)                  # Init oled display
 WIDTH  = 128                                            # oled display width
 HEIGHT = 32                                             # oled display height
- 
-i2c = I2C(0, scl=Pin(1), sda=Pin(0), freq=200000)       # Init I2C using pins GP8 & GP9 (default I2C0 pins)
- 
-oled = SSD1306_I2C(WIDTH, HEIGHT, i2c)                  # Init oled display
+ ###################################################################################
 sensor = DHT22(Pin(6))
+led= machine.Pin('LED', machine.Pin.OUT)
 
+#Main loop
 while True:
+    led.on()
+    time.sleep(0.5)
+    led.off()
+    time.sleep(0.5)
+    
     sensor.measure()
     temp = sensor.temperature()
     hum = sensor.humidity()
