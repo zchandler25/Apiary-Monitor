@@ -4,12 +4,28 @@ import utime as time
 from dht import DHT22
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
+import network
+import secrets
+
+## WiFi network details
+SSID = secrets.secrets['ssid']
+PASSWORD = secrets.secrets['password']
 
 # InfluxDB Cloud account details
-bucket = "my-bucket"
-org = "my-org"
-token = "my-token"
-url = "https://us-west-2-1.aws.cloud2.influxdata.com"
+bucket = secrets.secrets['bucket']
+org = secrets.secrets['org']
+token = secrets.secrets['token']
+url = secrets.secrets['url']
+
+# Connect to WiFi
+wifi = network.WLAN(network.STA_IF)
+wifi.active(True)
+wifi.connect(SSID, PASSWORD)
+
+# Wait until connected
+while not wifi.isconnected():
+    pass
+
 
 # Initialize InfluxDB client
 client = InfluxDBClient(url=url, token=token)
