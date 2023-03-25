@@ -1,21 +1,13 @@
+import urequests
+import time
 from machine import Pin, I2C
-from ssd1306 import SSD1306_I2C
-import utime as time
 from dht import DHT22
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
 import network
 import secrets
 
 ## WiFi network details
 SSID = secrets.secrets['ssid']
 PASSWORD = secrets.secrets['password']
-
-# InfluxDB Cloud account details
-bucket = secrets.secrets['bucket']
-org = secrets.secrets['org']
-token = secrets.secrets['token']
-url = secrets.secrets['url']
 
 # Connect to WiFi
 wifi = network.WLAN(network.STA_IF)
@@ -26,50 +18,47 @@ wifi.connect(SSID, PASSWORD)
 while not wifi.isconnected():
     pass
 
+# Define your InfluxDB Cloud settings
+INFLUXDB_URL = 'https://us-east-1-1.aws.cloud2.influxdata.com'
+INFLUXDB_TOKEN = 'aBKAtdFnwGkKWlo9bNuuUfBVX2IQcMeogVh1buDryed9z6vbPcU_MdKQ2k4ZuGxGBR03JV5e7rEV14QDxXjSlw=='
+INFLUXDB_ORG = '728e39e951451c80'
+INFLUXDB_BUCKET = 'e8f3f6b06d47534f'
 
-# Initialize InfluxDB client
-client = InfluxDBClient(url=url, token=token)
+# Connect to the DHT11 sensor
+d = DHT22(Pin(6))
 
-# Display
-i2c = I2C(0, scl=Pin(1), sda=Pin(0), freq=200000)
-oled = SSD1306_I2C(WIDTH, HEIGHT, i2c)
-WIDTH = 128
-HEIGHT = 32
-
-# Sensor
-sensor = DHT22(Pin(6))
-
-# LED
-led = machine.Pin('LED', machine.Pin.OUT)
-
-# Main loop
 while True:
-    led.on()
-    time.sleep(0.5)
-    led.off()
-    time.sleep(0.5)
-    
-    sensor.measure()
-    temp = sensor.temperature()
-    hum = sensor.humidity()
-    weight = ("150")
-    print("Temperature: {}°C   Humidity: {:.0f}% ".format(temp, hum))
+    try:
+        # Read the temperature and humidity from the DHT11 sensor
+        d.measure()
+        temperature = d.temperature()
+        humidity = d.humidity()
 
-    # Write sensor data to InfluxDB Cloud
-    write_api = client.write_api(write_options=SYNCHRONOUS)
-    point = Point("my-measurement").tag("location", "my-location").field("temperature", temp).field("humidity", hum)
-    write_api.write(bucket=bucket, org=org, record=point)
-    
-    # Clear the OLED display and add text
-    oled.fill(0)       
-    oled.text("Temp: ",0,0)
-    oled.text(str(temp),50,0)
-    oled.text("C",90,0)
-    oled.text("Hum: ",0,10)
-    oled.text(str(hum),50,10)
-    oled.text("%",90,10)
-    oled.text("LB: ",0,20)
-    oled.text(str(weight),50,20)
-    
-    time.sleep(1)
-    oled.show()
+        # Get the current time in Unix timestamp format
+        timestamp = int(time.time())
+
+        # Construct the data payload in InfluxDB Line Protocol format with timestamp
+        data = 'temperature,location=office value={} {}'.format(temperature, timestamp) + '\n'
+        data += 'humidity,location=office value={} {}'.format(humidity, timestamp) + '\n'
+
+        # Print the data payload for debugging purposes
+        print('Data payload: {}'.format(data))
+
+        # Send the data to InfluxDB Cloud using the POST method and the urequests library
+        headers = {
+            'Authorization': 'Token {}'.format(INFLUXDB_TOKEN),
+            'Content-Type': 'application/octet-stream',
+            'User-Agent': 'micropython-urequests'
+        }
+        url = '{}/api/v2/write?org={}&bucket={}&precision=s'.format(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET)
+        response = urequests.post(url, headers=headers, data=data)
+
+        # Print the response code and text for debugging purposes
+        print('Response code: {}'.format(response.status_code))
+        print('Response text: {}'.format(response.text))
+
+        # Sleep for 10 seconds before reading the sensor again
+        time.sleep(10)
+
+    except Exception as e:
+        print('Error reading sensor: {}'.format(e))
