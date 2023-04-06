@@ -1,0 +1,22 @@
+work log:
+
+
+03/25
+  collab to start connecting components, things of note:
+        build main loop to query sensors for temp and humidity.
+        build tester.py to test communication to influxdb cloud.
+        pi pico is unable to support standart influxdb lib, using urequests to accomidate minmal specs of hardware.
+        
+        Issues:
+         Influxdb will take data, but is not consistent with storing and displaying. will require more troubleshooting.
+         pico hardware was difficult in reflashing.
+         due to hardware low specs, currnetly only running main funciton to meeasure and send sensor data. will need to troubleshoot device capability to
+        support screen with button on/timed off, blinking led (power indicator) 
+        
+        Remaining work:
+        3 more picos will need to be flashed, soldered, tested.
+        create a dashboard that can displayh each pico as a unique data sorce in the same graph (need to compare)
+
+
+        Future/what ifs
+        Auto notifications based on temp/humidity thresshold.
