@@ -18,11 +18,11 @@ wifi.connect(SSID, PASSWORD)
 while not wifi.isconnected():
     pass
 
-# Define your InfluxDB Cloud settings
-INFLUXDB_URL = 'https://us-east-1-1.aws.cloud2.influxdata.com'
-INFLUXDB_TOKEN = 'aBKAtdFnwGkKWlo9bNuuUfBVX2IQcMeogVh1buDryed9z6vbPcU_MdKQ2k4ZuGxGBR03JV5e7rEV14QDxXjSlw=='
-INFLUXDB_ORG = '728e39e951451c80'
-INFLUXDB_BUCKET = 'e8f3f6b06d47534f'
+# InfluxDB Cloud settings
+INFLUXDB_URL = secrets.secrets['url']
+INFLUXDB_TOKEN = secrets.secrets['token']
+INFLUXDB_ORG = secrets.secrets['org']
+INFLUXDB_BUCKET = secrets.secrets['bucket']
 
 # Connect to the DHT11 sensor
 d = DHT22(Pin(6))
