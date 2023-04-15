@@ -1,28 +1,73 @@
-# displays values as either a graph or text values
-# uses a function to grab "value"
-
+import socket
+import ujson as json
+from datetime import datetime
 import tkinter as tk
 
-S
-# Create a new window object
-window = tk.Tk()
+# Server settings
+SERVER_PORT = 1234
 
-# Set the window title
-window.title("Temperature and Humidity")
+# Get local IP address
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.connect(("8.8.8.8", 80))
+SERVER_IP = s.getsockname()[0]
+print("IP Adderess is: ",SERVER_IP)
+s.close()
 
-# Set the window size
-window.geometry("300x200")
+# Dictionaries to store data
+temp_dict = {}
+hum_dict = {}
+weight_dict = {}
 
-# Create labels for the temperature and humidity
-temp_label = tk.Label(window, text="Temp: 75C", font=("Arial", 30))
+# Start server socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind((SERVER_IP, SERVER_PORT))
+s.listen(1)
+print("Server listening on {}:{}".format(SERVER_IP, SERVER_PORT))
+
+# Listen for incoming data and store it in the dictionaries
+def receive_data():
+    conn, addr = s.accept()
+    data = conn.recv(1024)
+    if data:
+        try:
+            data_dict = json.loads(data.decode())
+            temp_dict[str(datetime.now())] = data_dict["temperature"]
+            hum_dict[str(datetime.now())] = data_dict["humidity"]
+            weight_dict[str(datetime.now())] = data_dict["weight"]
+            print("Data received - Temperature: {}, Humidity: {}, Weight: {}".format(temp_dict, hum_dict, weight_dict))
+            update_gui()
+        except json.JSONDecodeError:
+            print("Error: Invalid data format received")
+
+# Update GUI with latest temperature, humidity, and weight readings
+def update_gui():
+    if temp_dict and hum_dict and weight_dict:
+        latest_temp = temp_dict[max(temp_dict)]
+        latest_hum = hum_dict[max(hum_dict)]
+        latest_weight = weight_dict[max(weight_dict)]
+        temp_label.config(text="Temperature: {} °C".format(latest_temp))
+        hum_label.config(text="Humidity: {:.0f}%".format(latest_hum))
+        weight_label.config(text="Weight: {:.2f} kg".format(latest_weight))
+
+# Create Tkinter GUI
+root = tk.Tk()
+root.title("Sensor Data")
+root.geometry("300x200")
+
+temp_label = tk.Label(root, text="Temperature: N/A")
 temp_label.pack(pady=10)
 
-humidity_label = tk.Label(window, text="Humidity: 70%", font=("Arial", 30))
-humidity_label.pack(pady=10)
+hum_label = tk.Label(root, text="Humidity: N/A")
+hum_label.pack(pady=10)
 
-# Update the temperature and humidity values (you can replace these values with your actual readings)
-temp_label.config(text="Temp:", grabvalue(temp_dict.py))
-humidity_label.config(text="Humidity:", grabvalue(temp_dict.py))
+weight_label = tk.Label(root, text="Weight: N/A")
+weight_label.pack(pady=10)
 
-# Run the main event loop
-window.mainloop()
+# Start receiving data
+tk.Label(root, text="Waiting for data...").pack(pady=20)
+root.after(1000, receive_data)
+
+root.mainloop()
+
+# Close socket
+s.close()
