@@ -1,64 +1,77 @@
-import urequests
-import time
-from machine import Pin, I2C
-from dht import DHT22
+import machine
 import network
-import secrets
+from machine import Pin, I2C
+from ssd1306 import SSD1306_I2C
+from dht import DHT22
+import socket
+import ujson as json
+import utime as time
 
-## WiFi network details
-SSID = secrets.secrets['ssid']
-PASSWORD = secrets.secrets['password']
+# Constants
+WIFI_SSID = "IP a Lot 2G"
+WIFI_PASSWORD = "A!!edegly21"
+SERVER_IP = "192.168.0.170"
+SERVER_PORT = 1234
+WAIT_TIME = 3  # Wait for 3 seconds before reading the sensor again
 
-# Connect to WiFi
-wifi = network.WLAN(network.STA_IF)
-wifi.active(True)
-wifi.connect(SSID, PASSWORD)
+# Initialize display
+i2c = I2C(0, scl=Pin(1), sda=Pin(0), freq=200000)
+oled = SSD1306_I2C(128, 32, i2c)
 
-# Wait until connected
-while not wifi.isconnected():
-    pass
+# Initialize sensor and LED
+sensor = DHT22(Pin(6))
+led = machine.Pin('LED', machine.Pin.OUT)
 
-# InfluxDB Cloud settings
-INFLUXDB_URL = secrets.secrets['url']
-INFLUXDB_TOKEN = secrets.secrets['token']
-INFLUXDB_ORG = secrets.secrets['org']
-INFLUXDB_BUCKET = secrets.secrets['bucket']
+# Connect to Wi-Fi
+wlan = network.WLAN(network.STA_IF)
+wlan.active(True)
+if not wlan.isconnected():
+    print('Connecting to Wi-Fi...')
+    wlan.connect(WIFI_SSID, WIFI_PASSWORD)
+    while not wlan.isconnected():
+        time.sleep(1)
+        print('.', end='')
+        if time.ticks_ms() > 15000:
+            print('\nFailed to connect to Wi-Fi')
+            break
+if wlan.isconnected():
+    print('Connected to Wi-Fi:', wlan.ifconfig()[0])
 
-# Connect to the DHT11 sensor
-d = DHT22(Pin(6))
-
+# Main loop
 while True:
     try:
-        # Read the temperature and humidity from the DHT11 sensor
-        d.measure()
-        temperature = d.temperature()
-        humidity = d.humidity()
+        led.on()
+        time.sleep(1)
+        led.off()
+        time.sleep(1)
 
-        # Get the current time in Unix timestamp format
-        timestamp = int(time.time())
+        # Read sensor values
+        sensor.measure()
+        temp = sensor.temperature()
+        hum = sensor.humidity()
+        weight = "170"
+        print("Temperature: {:.1f}°C   Humidity: {:.0f}%".format(temp, hum))
 
-        # Construct the data payload in InfluxDB Line Protocol format with timestamp
-        data = 'temperature,location=office value={} {}'.format(temperature, timestamp) + '\n'
-        data += 'humidity,location=office value={} {}'.format(humidity, timestamp) + '\n'
+        # Display temperature, humidity, and weight values on separate lines
+        oled.text("Temp: {:.1f}°C ".format(temp), 0, 0)
+        oled.text("Hum: {:.0f}%".format(hum), 0, 10)
+        oled.text("LB: {}".format(weight), 0, 20)
+        oled.show()
 
-        # Print the data payload for debugging purposes
-        print('Data payload: {}'.format(data))
-
-        # Send the data to InfluxDB Cloud using the POST method and the urequests library
-        headers = {
-            'Authorization': 'Token {}'.format(INFLUXDB_TOKEN),
-            'Content-Type': 'application/octet-stream',
-            'User-Agent': 'micropython-urequests'
-        }
-        url = '{}/api/v2/write?org={}&bucket={}&precision=s'.format(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET)
-        response = urequests.post(url, headers=headers, data=data)
-
-        # Print the response code and text for debugging purposes
-        print('Response code: {}'.format(response.status_code))
-        print('Response text: {}'.format(response.text))
-
-        # Sleep for 10 seconds before reading the sensor again
-        time.sleep(10)
+        # Send data to server via socket
+        data = {"temperature": temp, "humidity": hum, "weight": weight}
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((SERVER_IP, SERVER_PORT))
+            print('JSON data:', json.dumps(data))
+            s.sendall(json.dumps(data))
+            print('Data sent to server:', data)
+        except Exception as e:
+            print('Error sending data to server:', e)
+        finally:
+            s.close()
 
     except Exception as e:
-        print('Error reading sensor: {}'.format(e))
+        print('Error reading sensor data:', e)
+
+    time.sleep(WAIT_TIME)
