@@ -39,7 +39,8 @@ def receive_data():
             update_gui()
         except json.JSONDecodeError:
             print("Error: Invalid data format received")
-
+    conn.close()  # close the connection
+    root.after(1000, receive_data)  # schedule receive_data() to be called again after 1000 milliseconds
 # Update GUI with latest temperature, humidity, and weight readings
 def update_gui():
     if temp_dict and hum_dict and weight_dict:
