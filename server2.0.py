@@ -32,15 +32,22 @@ def receive_data():
     if data:
         try:
             data_dict = json.loads(data.decode())
-            temp_dict[str(datetime.now())] = data_dict["temperature"]
-            hum_dict[str(datetime.now())] = data_dict["humidity"]
-            weight_dict[str(datetime.now())] = data_dict["weight"]
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            temp_dict[timestamp] = data_dict["temperature"]
+            hum_dict[timestamp] = data_dict["humidity"]
+            weight_dict[timestamp] = data_dict["weight"]
             print("Data received - Temperature: {}, Humidity: {}, Weight: {}".format(temp_dict, hum_dict, weight_dict))
+            # Write data to JSON file
+            with open('data.json', 'a') as f:
+                data_dict["timestamp"] = timestamp
+                json.dump(data_dict, f, ensure_ascii=False)
+                f.write('\n')
             update_gui()
         except json.JSONDecodeError:
             print("Error: Invalid data format received")
     conn.close()  # close the connection
     root.after(1000, receive_data)  # schedule receive_data() to be called again after 1000 milliseconds
+
 # Update GUI with latest temperature, humidity, and weight readings
 def update_gui():
     if temp_dict and hum_dict and weight_dict:
